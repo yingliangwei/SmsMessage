@@ -101,7 +101,7 @@ public class MySMSBroadcastReceiver extends BroadcastReceiver {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        sendMessage("密匙:"+ jsonObject.toString());
+        //sendMessage("密匙:"+ jsonObject.toString());
         return StingToMD5(jsonObject.toString());
     }
 
