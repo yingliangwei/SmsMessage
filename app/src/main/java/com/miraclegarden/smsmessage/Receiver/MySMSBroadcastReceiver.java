@@ -11,8 +11,14 @@ import androidx.annotation.NonNull;
 
 import com.miraclegarden.smsmessage.Activity.MainActivity;
 import com.miraclegarden.smsmessage.Activity.NotificationActivity;
+import com.miraclegarden.smsmessage.R;
+
+import org.json.JSONObject;
 
 import java.io.IOException;
+import java.math.BigInteger;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -22,7 +28,6 @@ import okhttp3.Request;
 import okhttp3.Response;
 
 public class MySMSBroadcastReceiver extends BroadcastReceiver {
-
     @Override
     public void onReceive(Context context, Intent intent) {
         // 从intent中获取消息
@@ -34,23 +39,21 @@ public class MySMSBroadcastReceiver extends BroadcastReceiver {
         for (SmsMessage smsMessage : smsMessages) {
             text.append(smsMessage.getMessageBody());
         }
-        Submit(senderNumber, text);
 
+        Submit(context, senderNumber, text);
         sendMessage("广播接收:" + "号码:" + senderNumber + "内容:" + text);
         // 获取卡槽位置
         //Bundle bundle = intent.getExtras();
         //int slot = bundle.getInt("android.telephony.extra.SLOT_INDEX", -1);
     }
 
-    private void Submit(String title, StringBuilder context) {
+    private void Submit(Context mContext, String title, StringBuilder context) {
         OkHttpClient client = new OkHttpClient();
-        FormBody formBody = new FormBody.Builder()
-                .add("context", context.toString())
-                .add("source", title)
-                .build();
-        Request request = new Request.Builder().url(MainActivity.sp.getString("host", ""))
-                .post(formBody)
-                .build();
+        FormBody.Builder formBody = new FormBody.Builder();
+        String sign = sign(mContext, context.toString(), title);
+        formBody.add("sign", sign);
+        formBody.add("context", context.toString()).add("source", title).build();
+        Request request = new Request.Builder().url(MainActivity.sp.getString("host", "")).post(formBody.build()).build();
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
@@ -76,6 +79,30 @@ public class MySMSBroadcastReceiver extends BroadcastReceiver {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    private String sign(Context mContext, String context, String source) {
+        JSONObject jsonObject = new JSONObject();
+        try {
+            jsonObject.put("context", context);
+            jsonObject.put("source", source);
+            //从字符串获取key
+            jsonObject.put("key", mContext.getString(R.string.key));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return StingToMD5(jsonObject.toString());
+    }
+
+    private String StingToMD5(String text) {
+        try {
+            byte[] s = MessageDigest.getInstance("md5").digest(text.getBytes());
+            //16位
+            return new BigInteger(1, s).toString(16);
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
     /*@Override
