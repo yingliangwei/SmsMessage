@@ -5,20 +5,25 @@ import static android.provider.Telephony.Sms.Intents.getMessagesFromIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.telephony.SmsMessage;
 
 import androidx.annotation.NonNull;
 
 import com.miraclegarden.smsmessage.Activity.MainActivity;
 import com.miraclegarden.smsmessage.Activity.NotificationActivity;
-import com.miraclegarden.smsmessage.R;
 
 import org.json.JSONObject;
 
 import java.io.IOException;
 import java.math.BigInteger;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.HashMap;
+import java.util.Map;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -50,9 +55,11 @@ public class MySMSBroadcastReceiver extends BroadcastReceiver {
 
     private void Submit(Context mContext, String title, StringBuilder context) {
         OkHttpClient client = new OkHttpClient();
+        long time = System.currentTimeMillis();
         FormBody.Builder formBody = new FormBody.Builder();
-        String sign = sign(mContext, context.toString(), title);
+        String sign = sign(String.valueOf(time), mContext, context.toString(), title);
         formBody.add("sign", sign);
+        formBody.add("timestamp", String.valueOf(time));
         formBody.add("context", context.toString()).add("source", title).build();
         Request request = new Request.Builder().url(MainActivity.sp.getString("host", "")).post(formBody.build()).build();
         client.newCall(request).enqueue(new Callback() {
@@ -82,22 +89,42 @@ public class MySMSBroadcastReceiver extends BroadcastReceiver {
         }
     }
 
-    private String sign(Context mContext, String context, String source) {
+    private String sign(String time, Context mContext, String context, String source) {
         JSONObject jsonObject = new JSONObject();
         try {
             jsonObject.put("context", context);
             jsonObject.put("source", source);
+            String key = StingToMD5(getKey(mContext));
             //从字符串获取key
-            jsonObject.put("key", mContext.getString(R.string.key));
+            jsonObject.put("key", key);
+            jsonObject.put("time", time);
         } catch (Exception e) {
             e.printStackTrace();
         }
+        sendMessage("密匙:"+ jsonObject.toString());
         return StingToMD5(jsonObject.toString());
     }
 
+    /**
+     * 获取分钟的时间戳（13位）
+     *
+     * @return
+     */
+
+    private static long getTimeMills() {
+        return System.currentTimeMillis() / 1000 / 60;
+    }
+
+
+    private String getKey(Context context) throws MalformedURLException {
+        SharedPreferences sp = context.getSharedPreferences("server", Context.MODE_PRIVATE);
+        return sp.getString("host", "");
+    }
+
+
     private String StingToMD5(String text) {
         try {
-            byte[] s = MessageDigest.getInstance("md5").digest(text.getBytes());
+            byte[] s = MessageDigest.getInstance("md5").digest(text.getBytes(StandardCharsets.UTF_8));
             //16位
             return new BigInteger(1, s).toString(16);
         } catch (NoSuchAlgorithmException e) {

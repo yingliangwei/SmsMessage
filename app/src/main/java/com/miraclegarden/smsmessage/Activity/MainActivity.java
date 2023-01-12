@@ -84,6 +84,7 @@ public class MainActivity extends MiracleGardenActivity<ActivityMainBinding> {
             return;
         }
         binding.host.setText(sp.getString("host", ""));
+
     }
 
     private void initView() {
