@@ -28,6 +28,7 @@ import okhttp3.Request;
 import okhttp3.Response;
 
 public class MySMSBroadcastReceiver extends BroadcastReceiver {
+
     @Override
     public void onReceive(Context context, Intent intent) {
         // 从intent中获取消息
